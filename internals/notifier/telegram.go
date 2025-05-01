@@ -9,6 +9,7 @@ type TelegramNotifier struct {
 	ChatId int64
 }
 
+// NewTelegramNotifier cria uma nova instância do TelegramNotifier
 func NewTelegramNotifier(token string, chatId int64) (*TelegramNotifier, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -22,6 +23,7 @@ func NewTelegramNotifier(token string, chatId int64) (*TelegramNotifier, error) 
 
 }
 
+// Send cria um metodo que envia uma mensagem para o chat do Telegram
 func (t *TelegramNotifier) Send(message string) error {
 	msg := tgbotapi.NewMessage(t.ChatId, message)
 	_, err := t.Bot.Send(msg)

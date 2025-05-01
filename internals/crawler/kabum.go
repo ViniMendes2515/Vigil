@@ -16,6 +16,7 @@ type ProductInfo struct {
 	Price float64
 }
 
+// ScrapeKabum faz o scraping dos produtos da Kabum e retorna uma lista de ProductInfo
 func ScrapeKabum(url []string) ([]ProductInfo, error) {
 	var results []ProductInfo
 
