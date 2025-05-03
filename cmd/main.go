@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/ViniMendes2515/price-crawler/config"
-	"github.com/ViniMendes2515/price-crawler/internals/crawler"
 	"github.com/ViniMendes2515/price-crawler/internals/notifier"
-	"github.com/ViniMendes2515/price-crawler/internals/services"
+	"github.com/ViniMendes2515/price-crawler/internals/scheduler"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
@@ -19,11 +18,9 @@ func main() {
 		return
 	}
 
-	produtos, err := crawler.ScrapeKabum(cfg.KabumURLs)
-	if err != nil {
-		fmt.Println("Erro ao fazer o scraping: ", err)
-		return
-	}
+	c := cron.New()
+	scheduler.BuscaPrecos(c, cfg, tg)
+	c.Start()
 
-	services.Monitorar(produtos, *tg)
+	select {}
 }

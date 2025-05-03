@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"strconv"
 
-	"github.com/ViniMendes2515/price-crawler/internals/crawler"
 	"github.com/ViniMendes2515/price-crawler/internals/historico"
+	"github.com/ViniMendes2515/price-crawler/internals/models"
 	"github.com/ViniMendes2515/price-crawler/internals/notifier"
 )
 
-func agrupaSite(produtos []crawler.ProductInfo) map[string][]crawler.ProductInfo {
-	grupos := make(map[string][]crawler.ProductInfo)
+func agrupaSite(produtos []models.ProductInfo) map[string][]models.ProductInfo {
+	grupos := make(map[string][]models.ProductInfo)
 
 	for _, produto := range produtos {
-		parsed, err := url.Parse(produto.URL)
+		parsed, err := url.Parse(produto.Url)
 		if err != nil {
 			continue
 		}
@@ -27,36 +26,46 @@ func agrupaSite(produtos []crawler.ProductInfo) map[string][]crawler.ProductInfo
 }
 
 // Monitorar verifica se os produtos estão em promoção e envia notificações via Telegram
-func Monitorar(produtos []crawler.ProductInfo, tg notifier.TelegramNotifier) {
+func Monitorar(produtos []models.ProductInfo, tg notifier.TelegramNotifier) {
 	const telegramLimit = 4096
 	const fatorDesvioPadrao = 0.6
 
-	for dominio, produto := range produtos {
-		mensagem := fmt.Sprintf("📢 Promoções em %s:\n\n", strconv.Itoa(dominio))
+	agrupados := agrupaSite(produtos)
 
-		promocao, err := historico.DetectarPromocao(produto.URL, produto.Price, fatorDesvioPadrao)
-		if err != nil && !promocao {
-			log.Println("Erro ao verificar promoção:", err)
-			continue
+	if err := historico.Carregar(); err != nil {
+		log.Println("Erro ao carregar histórico:", err)
+		return
+	}
+
+	for dominio, lista := range agrupados {
+		mensagem := fmt.Sprintf("📢 Promoções em %s:\n\n", dominio)
+
+		for _, produto := range lista {
+
+			promocao, err := historico.DetectarPromocao(produto.Url, produto.Price, fatorDesvioPadrao)
+			if err != nil && !promocao {
+				log.Println("Erro ao verificar promoção:", err)
+				continue
+			}
+
+			bloco := fmt.Sprintf(
+				"• %s\n💰 R$ %.2f\n🔗 %s\n\n",
+				produto.Title,
+				produto.Price,
+				produto.Url,
+			)
+
+			if len(mensagem)+len(bloco) > telegramLimit {
+				tg.Send(mensagem)
+				mensagem = ""
+			}
+
+			mensagem += bloco
+
+			historico.RegistrarPreco(produto.Url, produto.Price)
 		}
 
-		bloco := fmt.Sprintf(
-			"• %s\n💰 R$ %.2f\n🔗 %s\n\n",
-			produto.Title,
-			produto.Price,
-			produto.URL,
-		)
-
-		if len(mensagem)+len(bloco) > telegramLimit {
-			tg.Send(mensagem)
-			mensagem = ""
-		}
-
-		mensagem += bloco
-
-		historico.RegistrarPreco(produto.URL, produto.Price)
-
-		if mensagem != fmt.Sprintf("📢 Promoções em %s:\n\n", strconv.Itoa(dominio)) {
+		if mensagem != "" {
 			tg.Send(mensagem)
 		}
 	}

@@ -55,6 +55,12 @@ func RegistrarPreco(url string, preco float64) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	for _, p := range dados[url] {
+		if p == preco {
+			return // Preco ja registrado
+		}
+	}
+
 	dados[url] = append(dados[url], preco)
 }
 

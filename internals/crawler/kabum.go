@@ -7,18 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ViniMendes2515/price-crawler/internals/models"
 	"github.com/gocolly/colly/v2"
 )
 
-type ProductInfo struct {
-	URL   string
-	Title string
-	Price float64
-}
-
 // ScrapeKabum faz o scraping dos produtos da Kabum e retorna uma lista de ProductInfo
-func ScrapeKabum(url []string) ([]ProductInfo, error) {
-	var results []ProductInfo
+func ScrapeKabum(url []string) ([]models.ProductInfo, error) {
+	var results []models.ProductInfo
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -61,8 +56,8 @@ func ScrapeKabum(url []string) ([]ProductInfo, error) {
 
 		mu.Lock()
 
-		results = append(results, ProductInfo{
-			URL:   e.Request.URL.String(),
+		results = append(results, models.ProductInfo{
+			Url:   e.Request.URL.String(),
 			Title: title,
 			Price: price,
 		})
