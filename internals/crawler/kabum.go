@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ViniMendes2515/price-crawler/internals/models"
+	"vigil/internals/models"
+
 	"github.com/gocolly/colly/v2"
 )
 
@@ -79,4 +80,8 @@ func ScrapeKabum(url []string) ([]models.ProductInfo, error) {
 	wg.Wait()
 
 	return results, nil
+}
+
+func init() {
+	Register("www.kabum.com.br", ScrapeKabum)
 }

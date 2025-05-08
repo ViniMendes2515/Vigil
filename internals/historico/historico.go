@@ -1,84 +1,48 @@
 package historico
 
 import (
-	"encoding/json"
 	"errors"
 	"math"
-	"os"
-	"sync"
+	"vigil/database"
 )
 
-var mu sync.Mutex
+// RegistrarPreco registra o preco de um produto na tabela historico_precos
+func RegistrarPreco(url string, preco float64) error {
+	db := database.DB
 
-const historicoPath = "../historico_precos.json"
-
-var dados = make(map[string][]float64)
-
-// Carregar o historico de precos do arquivo JSON
-func Carregar() error {
-	mu.Lock()
-	defer mu.Unlock()
-
-	file, err := os.Open(historicoPath)
+	var urlId int
+	err := db.QueryRow("SELECT id FROM urls WHERE url = ?", url).Scan(&urlId)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
+		return errors.New("URL nao encontrada")
 	}
 
-	defer file.Close()
-
-	return json.NewDecoder(file).Decode(&dados)
-}
-
-// Salvar o historico de precos no arquivo JSON
-func Salvar() error {
-	mu.Lock()
-	defer mu.Unlock()
-
-	file, err := os.Create(historicoPath)
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM historico_precos WHERE url_id = ? AND preco = ?", urlId, preco).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	defer file.Close()
-
-	enc := json.NewEncoder(file)
-	enc.SetIndent("", "  ")
-
-	return enc.Encode(dados)
-}
-
-// RegistrarPreco registra o preco de um produto na memoria do programa
-func RegistrarPreco(url string, preco float64) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	for _, p := range dados[url] {
-		if p == preco {
-			return // Preco ja registrado
-		}
+	if count > 0 {
+		return nil // Preco ja registrado
 	}
 
-	dados[url] = append(dados[url], preco)
+	_, err = db.Exec("INSERT INTO historico_precos (url_id, preco) VALUES (?, ?)", urlId, preco)
+	return err
 }
 
 // MenorPreco retorna o menor preco registrado para uma URL
 func MenorPreco(url string) (float64, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	db := database.DB
 
-	precos, existe := dados[url]
-	if !existe || len(precos) == 0 {
+	var menor float64
+	err := db.QueryRow(`
+		SELECT MIN(preco)
+		FROM historico_precos
+		WHERE url_id = (SELECT id FROM urls WHERE url = ?)
+	`, url).Scan(&menor)
+
+	if err != nil || menor == 0 {
 		return 0, errors.New("nenhum preco encontrado")
-	}
-
-	menor := precos[0]
-	for _, preco := range precos {
-		if preco < menor {
-			menor = preco
-		}
 	}
 
 	return menor, nil
@@ -86,47 +50,63 @@ func MenorPreco(url string) (float64, error) {
 
 // Media retorna a media dos precos registrados para uma URL
 func Media(url string) (float64, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	db := database.DB
 
-	precos, existe := dados[url]
-	if !existe || len(precos) == 0 {
+	var media float64
+	err := db.QueryRow(`SELECT AVG(preco)
+		FROM historico_precos
+		WHERE url_id = (SELECT id FROM urls WHERE url = ?)
+	`, url).Scan(&media)
+
+	if err != nil || media == 0 {
 		return 0, errors.New("nenhum preco encontrado")
 	}
-
-	soma := 0.0
-	for _, preco := range precos {
-		soma += preco
-	}
-
-	media := soma / float64(len(precos))
 
 	return media, nil
 }
 
 // DesvioPadrao retorna o desvio padrao dos precos registrados para uma URL
 func DesvioPadrao(url string) (float64, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	db := database.DB
 
-	precos, existe := dados[url]
-	if !existe || len(precos) == 0 {
-		return 0, errors.New("nenhum preco encontrado")
+	rows, err := db.Query(`
+		SELECT preco
+		FROM historico_precos
+		WHERE url_id = (SELECT id FROM urls WHERE url = ?)
+	`, url)
+
+	if err != nil {
+		return 0, err
 	}
 
-	var soma, media float64
-	for _, preco := range precos {
+	defer rows.Close()
+
+	var precos []float64
+	var soma float64
+
+	for rows.Next() {
+		var preco float64
+		if err := rows.Scan(&preco); err != nil {
+			return 0, err
+		}
+		precos = append(precos, preco)
 		soma += preco
 	}
-	media = soma / float64(len(precos))
 
+	n := float64(len(precos))
+	if n == 0 {
+		return 0, errors.New("nenhum preco encontrado para o calculo")
+	}
+
+	media := soma / n
 	var somaQuadrados float64
 	for _, preco := range precos {
 		somaQuadrados += (preco - media) * (preco - media)
 	}
 
-	desvio := somaQuadrados / float64(len(precos)-1)
-	return math.Sqrt(desvio), nil
+	variancia := somaQuadrados / (n - 1)
+	return math.Sqrt(variancia), nil
+
 }
 
 // DetectarNovaMinima verifica se o preco atual e menor que o menor preco registrado

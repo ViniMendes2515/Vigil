@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/ViniMendes2515/price-crawler/internals/historico"
-	"github.com/ViniMendes2515/price-crawler/internals/models"
-	"github.com/ViniMendes2515/price-crawler/internals/notifier"
+	"vigil/internals/historico"
+	"vigil/internals/models"
+	"vigil/internals/notifier"
 )
 
 func agrupaSite(produtos []models.ProductInfo) map[string][]models.ProductInfo {
@@ -31,11 +31,6 @@ func Monitorar(produtos []models.ProductInfo, tg notifier.TelegramNotifier) {
 	const fatorDesvioPadrao = 0.6
 
 	agrupados := agrupaSite(produtos)
-
-	if err := historico.Carregar(); err != nil {
-		log.Println("Erro ao carregar histórico:", err)
-		return
-	}
 
 	for dominio, lista := range agrupados {
 		mensagem := fmt.Sprintf("📢 Promoções em %s:\n\n", dominio)
@@ -68,9 +63,5 @@ func Monitorar(produtos []models.ProductInfo, tg notifier.TelegramNotifier) {
 		if mensagem != "" {
 			tg.Send(mensagem)
 		}
-	}
-
-	if err := historico.Salvar(); err != nil {
-		log.Println("Erro ao salvar histórico:", err)
 	}
 }

@@ -3,7 +3,7 @@ package services
 import (
 	"testing"
 
-	"github.com/ViniMendes2515/price-crawler/internals/models"
+	"vigil/internals/models"
 )
 
 func TestAgruparSite(t *testing.T) {

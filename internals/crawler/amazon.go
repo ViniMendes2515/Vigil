@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ViniMendes2515/price-crawler/internals/models"
+	"vigil/internals/models"
+
 	"github.com/gocolly/colly/v2"
 )
 
@@ -83,4 +84,29 @@ func ScrapeAmazon(url []string) ([]models.ProductInfo, error) {
 	wg.Wait()
 
 	return results, nil
+}
+
+func FetchNameAmazon(url string) (string, error) {
+	collector := colly.NewCollector(
+		colly.AllowedDomains("amazon.com.br", "www.amazon.com.br"),
+		colly.UserAgent("Mozilla/5.0 (compatible; AmazonCrawler/1.0)"),
+	)
+
+	var name string
+
+	collector.OnHTML("span#productTitle", func(e *colly.HTMLElement) {
+		name = strings.TrimSpace(e.Text)
+	})
+
+	err := collector.Visit(url)
+	if err != nil {
+		return "", err
+	}
+
+	return name, nil
+}
+
+func init() {
+	Register("www.amazon.com.br", ScrapeAmazon)
+	RegisterNameFetcher("www.amazon.com.br", FetchNameAmazon)
 }
