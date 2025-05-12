@@ -1,51 +1,66 @@
 package database
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 )
 
+type UrlRepository interface {
+	AddUrl(ctx context.Context, site, url, name string, precoInicial, precoLimite float64) error
+	GetUrls(ctx context.Context) (map[string]int, error)
+	GetSiteUrls(ctx context.Context, host string) ([]string, error)
+	RemoveUrl(ctx context.Context, url string) error
+	RemoveAllUrls(ctx context.Context) error
+	RemoveUrlById(ctx context.Context, id uint) error
+}
+
+type PostgresUrlRepo struct{}
+
 // AddUrl adiciona uma nova URL ao banco de dados
-func AddUrl(site string, url string, name string, precoInicial float64, precoLimite float64) error {
-	tx, err := DB.Begin()
+func (r *PostgresUrlRepo) AddUrl(ctx context.Context, site string, url string, name string, precoInicial float64, precoLimite float64) error {
+	tx, err := DB.Begin(ctx)
 	if err != nil {
 		return errors.New("erro ao iniciar transação")
 	}
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback(ctx)
 		}
 	}()
 
 	var validate int
-	err = DB.QueryRow(`SELECT COUNT(*) FROM urls WHERE url = ?`, url).Scan(&validate)
+	err = DB.QueryRow(ctx, `SELECT COUNT(*) FROM urls WHERE url = $1`, url).Scan(&validate)
 	if err != nil {
 		return err
 	}
 
 	if validate > 0 {
-		return fmt.Errorf("URL ja existe no banco")
+		return fmt.Errorf("URL já existe no banco")
 	}
 
-	res, err := DB.Exec(`INSERT INTO urls (site, url, name, preco_limite) VALUES (?, ?, ?, ?)`, strings.ToLower(site), url, name, precoLimite)
+	var lastId int64
+	err = tx.QueryRow(ctx,
+		`INSERT INTO urls (site, url, name, preco_limite) VALUES ($1, $2, $3, $4) RETURNING id`,
+		strings.ToLower(site), url, name, precoLimite).Scan(&lastId)
+
 	if err != nil {
 		return errors.New("erro ao adicionar URL")
 	}
 
 	if precoInicial > 0 {
-		lastId, err := res.LastInsertId()
-		if err != nil {
-			return errors.New("erro ao obter ID do produto")
-		}
-		_, err = DB.Exec(`INSERT INTO historico_precos (url_id, preco) VALUES (?, ?)`, lastId, precoInicial)
+		_, err = tx.Exec(ctx,
+			`INSERT INTO historico_precos (url_id, preco) VALUES ($1, $2)`,
+			lastId, precoInicial)
+
 		if err != nil {
 			return errors.New("erro ao adicionar preco inicial")
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return errors.New("erro ao confirmar transação")
 	}
 
@@ -53,21 +68,20 @@ func AddUrl(site string, url string, name string, precoInicial float64, precoLim
 }
 
 // GetUrls retorna todas as URLs do banco de dados
-func GetUrls() (map[string]int, error) {
-	rows, err := DB.Query(`SELECT id, url FROM urls ORDER BY id`)
+func (r *PostgresUrlRepo) GetUrls(ctx context.Context) (map[string]int, error) {
+	rows, err := DB.Query(ctx, `SELECT id, url FROM urls ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	urls := map[string]int{}
-
+	urls := make(map[string]int)
 	for rows.Next() {
 		var url string
 		var id uint
 		if err := rows.Scan(&id, &url); err != nil {
 			return nil, err
 		}
-
 		urls[url] = int(id)
 	}
 
@@ -75,11 +89,12 @@ func GetUrls() (map[string]int, error) {
 }
 
 // GetSiteUrls retorna todas as URLs de um site específico
-func GetSiteUrls(host string) ([]string, error) {
-	rows, err := DB.Query(`SELECT url FROM urls WHERE site = ?`, host)
+func (r *PostgresUrlRepo) GetSiteUrls(ctx context.Context, host string) ([]string, error) {
+	rows, err := DB.Query(ctx, `SELECT url FROM urls WHERE site = $1`, host)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var urls []string
 	for rows.Next() {
@@ -91,36 +106,37 @@ func GetSiteUrls(host string) ([]string, error) {
 	}
 
 	if len(urls) == 0 {
-		fmt.Printf("⚠️- Nenhuma URL de %s foi encontrada para monitoramento\n", host)
+		fmt.Printf("⚠️ Nenhuma URL de %s foi encontrada para monitoramento\n", host)
 	}
 
 	return urls, nil
 }
 
-// RemoveUrl remove a URL do banco de dados
-func RemoveUrl(url string) error {
-	tx, err := DB.Begin()
+// RemoveUrl remove uma URL do banco de dados
+func (r *PostgresUrlRepo) RemoveUrl(ctx context.Context, url string) error {
+	tx, err := DB.Begin(ctx)
 	if err != nil {
 		return errors.New("erro ao iniciar transação")
 	}
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback(ctx)
 		}
 	}()
 
-	_, err = DB.Exec(`DELETE FROM historico_precos WHERE url_id = (SELECT url_id FROM urls WHERE url = ? )`, url)
+	_, err = tx.Exec(ctx,
+		`DELETE FROM historico_precos WHERE url_id = (SELECT id FROM urls WHERE url = $1)`, url)
 	if err != nil {
 		return errors.New("erro ao remover historico de precos")
 	}
 
-	_, err = DB.Exec(`DELETE FROM urls WHERE url = ?`, url)
+	_, err = tx.Exec(ctx, `DELETE FROM urls WHERE url = $1`, url)
 	if err != nil {
 		return errors.New("erro ao remover URL")
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return errors.New("erro ao confirmar transação")
 	}
 
@@ -128,59 +144,59 @@ func RemoveUrl(url string) error {
 }
 
 // RemoveAllUrls remove todas as URLs do banco de dados
-func RemoveAllUrls() error {
-	tx, err := DB.Begin()
+func (r *PostgresUrlRepo) RemoveAllUrls(ctx context.Context) error {
+	tx, err := DB.Begin(ctx)
 	if err != nil {
 		return errors.New("erro ao iniciar transação")
 	}
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback(ctx)
 		}
 	}()
 
-	_, err = DB.Exec(`DELETE FROM historico_precos`)
+	_, err = tx.Exec(ctx, `DELETE FROM historico_precos`)
 	if err != nil {
 		return errors.New("erro ao remover historico de precos")
 	}
 
-	_, err = DB.Exec(`DELETE FROM urls`)
+	_, err = tx.Exec(ctx, `DELETE FROM urls`)
 	if err != nil {
 		return errors.New("erro ao remover URLs")
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return errors.New("erro ao confirmar transação")
 	}
 
 	return nil
 }
 
-// RemoveUrlById remove a URL do banco de dados com base no ID
-func RemoveUrlById(id int) error {
-	tx, err := DB.Begin()
+// RemoveUrlById remove uma URL do banco de dados com base no ID
+func (r *PostgresUrlRepo) RemoveUrlById(ctx context.Context, id uint) error {
+	tx, err := DB.Begin(ctx)
 	if err != nil {
 		return errors.New("erro ao iniciar transação")
 	}
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback(ctx)
 		}
 	}()
 
-	_, err = DB.Exec(`DELETE FROM historico_precos WHERE url_id = ?`, id)
+	_, err = tx.Exec(ctx, `DELETE FROM historico_precos WHERE url_id = $1`, id)
 	if err != nil {
 		return errors.New("erro ao remover historico de precos")
 	}
 
-	_, err = DB.Exec(`DELETE FROM urls WHERE id = ?`, id)
+	_, err = tx.Exec(ctx, `DELETE FROM urls WHERE id = $1`, id)
 	if err != nil {
 		return errors.New("erro ao remover URL")
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return errors.New("erro ao confirmar transação")
 	}
 

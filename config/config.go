@@ -11,6 +11,7 @@ import (
 type Config struct {
 	TelegramToken  string // Token do bot do Telegram
 	TelegramChatID int64  // ID do chat (usuário ou grupo) para envio
+	DatabaseUrl    string // URL de conexão com o banco de dados
 }
 
 func Load() Config {
@@ -30,9 +31,15 @@ func Load() Config {
 		log.Fatal("❌ TELEGRAM_CHAT_ID inválido ou ausente.")
 	}
 
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		log.Fatal("❌ String de conexão não está definida.")
+	}
+
 	return Config{
 		TelegramToken:  token,
 		TelegramChatID: chatID,
+		DatabaseUrl:    connStr,
 	}
 
 }

@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"vigil/database"
 	"vigil/internals/crawler"
 	"vigil/internals/models"
 	"vigil/internals/services"
@@ -20,7 +20,7 @@ var checkCmd = &cobra.Command{
 		var produtos []models.ProductInfo
 
 		for site, scrapeFunc := range crawler.GetRegistered() {
-			urls, err := database.GetSiteUrls(site)
+			urls, err := repoUrls.GetSiteUrls(context.Background(), site)
 			if err != nil {
 				fmt.Println("Erro ao obter URLs do banco de dados: ", err)
 				continue

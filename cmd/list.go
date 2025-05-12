@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"vigil/database"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -16,9 +17,11 @@ var listCmd = &cobra.Command{
 	Short: "Lista os produtos monitorados",
 	Long:  `Lista todos os produtos monitorados com seus respectivos preços e URLs.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
 		if prices {
-			urlsPrice, err := database.ListPrices()
+			urlsPrice, err := repoHistory.ListPrices(ctx)
 			if err != nil {
 				fmt.Println("❌ Erro ao listar url com preços:", err)
 				return
@@ -33,7 +36,7 @@ var listCmd = &cobra.Command{
 			return
 		}
 
-		urls, err := database.GetUrls()
+		urls, err := repoUrls.GetUrls(ctx)
 		if err != nil {
 			fmt.Println("❌ Erro ao listar URLs:", err)
 			return

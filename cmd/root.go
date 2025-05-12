@@ -1,7 +1,14 @@
 package cmd
 
 import (
+	"vigil/database"
+
 	"github.com/spf13/cobra"
+)
+
+var (
+	repoUrls    database.UrlRepository
+	repoHistory database.PriceHistoryRepository
 )
 
 var rootCmd = &cobra.Command{
@@ -15,4 +22,10 @@ var rootCmd = &cobra.Command{
 // Execute executa o comando raiz
 func Execute() error {
 	return rootCmd.Execute()
+}
+
+// SetRepositories define os repositórios a serem usados
+func SetRepositories(urlRepo database.UrlRepository, historyRepo database.PriceHistoryRepository) {
+	repoUrls = urlRepo
+	repoHistory = historyRepo
 }

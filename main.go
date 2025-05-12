@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"vigil/cmd"
@@ -19,5 +20,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	defer database.DB.Close()
+	defer database.DB.Close(context.Background())
 }

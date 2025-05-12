@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
-	"vigil/database"
+	"time"
 	"vigil/internals/crawler"
 
 	"github.com/spf13/cobra"
@@ -25,18 +26,20 @@ var addCmd = &cobra.Command{
 	Long:  `Adiciona um produto para monitorar, informando a URL, o preco inicial e o preço limite se quiser.`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
 		if filePath != "" {
-			readFile(filePath)
+			readFile(ctx, filePath)
+			return
+		}
+
+		if len(args) != 1 {
+			cmd.PrintErrln("Aviso: Informe a URL como argumento principal ou use --file seguido do caminho de um arquivo CSV com o padrão (url, preco, limite)")
 			return
 		}
 
 		endereco := args[0]
-
-		if len(args) != 1 {
-			cmd.PrintErrln("Informe a URL ou use --file")
-			return
-		}
 
 		parsed, err := url.Parse(endereco)
 		if err != nil || parsed.Hostname() == "" {
@@ -52,7 +55,7 @@ var addCmd = &cobra.Command{
 			return
 		}
 
-		err = database.AddUrl(site, endereco, name, precoAtual, precoLimite)
+		err = repoUrls.AddUrl(ctx, site, endereco, name, precoAtual, precoLimite)
 		if err != nil {
 			fmt.Println("❌ Erro ao adicionar URL:", err)
 			return
@@ -65,13 +68,13 @@ var addCmd = &cobra.Command{
 func init() {
 	addCmd.Flags().Float64VarP(&precoLimite, "limite", "l", 0.0, "Preço limite para o produto")
 	addCmd.Flags().Float64VarP(&precoAtual, "preco", "p", 0.0, "Preço inicial do produto")
-	addCmd.Flags().StringVarP(&filePath, "file", "f", "", "Caminho para arquivo CSV com produtos")
+	addCmd.Flags().StringVarP(&filePath, "file", "f", "", "Caminho para arquivo CSV com produtos. Padrão CSV (url, preco, limite)")
 
 	rootCmd.AddCommand(addCmd)
 }
 
 // readFile lê um arquivo CSV e adiciona os produtos ao banco de dados
-func readFile(filePath string) {
+func readFile(ctx context.Context, filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("❌ Erro ao abrir arquivo:", err)
@@ -132,7 +135,7 @@ func readFile(filePath string) {
 			return
 		}
 
-		err = database.AddUrl(site, endereco, name, preco, limite)
+		err = repoUrls.AddUrl(ctx, site, endereco, name, preco, limite)
 		if err != nil {
 			fmt.Println("❌ Erro ao adicionar URL:", err)
 			continue

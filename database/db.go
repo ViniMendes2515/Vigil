@@ -1,60 +1,32 @@
 package database
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
-	"path/filepath"
+	"time"
+	"vigil/config"
 
-	_ "modernc.org/sqlite"
+	"github.com/jackc/pgx/v5"
 )
 
-var DB *sql.DB
+var DB *pgx.Conn
 
 func InitDB() error {
-	path := filepath.Join(".", "vigil.db")
+	cfg := config.Load()
+	connStr := cfg.DatabaseUrl
 
-	db, err := sql.Open("sqlite", path)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	db, err := pgx.Connect(ctx, connStr)
 	if err != nil {
 		return fmt.Errorf("erro ao abrir o banco: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("error ao conectar no banco: %v", err)
+	if err := db.Ping(ctx); err != nil {
+		return fmt.Errorf("erro ao conectar no banco: %w", err)
 	}
 
 	DB = db
-	return createTables()
-}
-
-func createTables() error {
-	urlTable := `
-	CREATE TABLE IF NOT EXISTS urls (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NULL,
-		site TEXT NOT NULL,
-		url TEXT NOT NULL UNIQUE,
-		preco_limite REAL NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`
-
-	historicoTable := `
-	CREATE TABLE IF NOT EXISTS historico_precos (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		url_id INTEGER NOT NULL,
-		preco REAL NOT NULL,
-		data DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY(url_id) REFERENCES urls(id)
-	);`
-
-	_, err := DB.Exec(urlTable)
-	if err != nil {
-		return fmt.Errorf("erro ao criar tabela de urls: %w", err)
-	}
-
-	_, err = DB.Exec(historicoTable)
-	if err != nil {
-		return fmt.Errorf("erro ao criar tabela de historico de precos: %w", err)
-	}
-
 	return nil
 }

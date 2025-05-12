@@ -82,6 +82,27 @@ func ScrapeKabum(url []string) ([]models.ProductInfo, error) {
 	return results, nil
 }
 
+func FecthNameKabum(url string) (string, error) {
+	collector := colly.NewCollector(
+		colly.AllowedDomains("kabum.com.br", "www.kabum.com.br"),
+		colly.UserAgent("Mozilla/5.0 (compatible; KabumCrawler/1.0)"),
+	)
+
+	var name string
+
+	collector.OnHTML("h1.sc-58b2114e-6", func(e *colly.HTMLElement) {
+		name = strings.TrimSpace(e.Text)
+	})
+
+	err := collector.Visit(url)
+	if err != nil {
+		return "", err
+	}
+
+	return name, nil
+}
+
 func init() {
 	Register("www.kabum.com.br", ScrapeKabum)
+	RegisterNameFetcher("www.kabum.com.br", FecthNameKabum)
 }

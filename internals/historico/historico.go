@@ -1,6 +1,7 @@
 package historico
 
 import (
+	"context"
 	"errors"
 	"math"
 	"vigil/database"
@@ -11,13 +12,15 @@ func RegistrarPreco(url string, preco float64) error {
 	db := database.DB
 
 	var urlId int
-	err := db.QueryRow("SELECT id FROM urls WHERE url = ?", url).Scan(&urlId)
+	err := db.QueryRow(context.Background(), "SELECT id FROM urls WHERE url = $1", url).Scan(&urlId)
 	if err != nil {
 		return errors.New("URL nao encontrada")
 	}
 
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM historico_precos WHERE url_id = ? AND preco = ?", urlId, preco).Scan(&count)
+	err = db.QueryRow(context.Background(),
+		"SELECT COUNT(*) FROM historico_precos WHERE url_id = $1 AND preco = $2",
+		urlId, preco).Scan(&count)
 	if err != nil {
 		return err
 	}
@@ -26,7 +29,9 @@ func RegistrarPreco(url string, preco float64) error {
 		return nil // Preco ja registrado
 	}
 
-	_, err = db.Exec("INSERT INTO historico_precos (url_id, preco) VALUES (?, ?)", urlId, preco)
+	_, err = db.Exec(context.Background(),
+		"INSERT INTO historico_precos (url_id, preco) VALUES ($1, $2)",
+		urlId, preco)
 	return err
 }
 
@@ -35,11 +40,11 @@ func MenorPreco(url string) (float64, error) {
 	db := database.DB
 
 	var menor float64
-	err := db.QueryRow(`
-		SELECT MIN(preco)
-		FROM historico_precos
-		WHERE url_id = (SELECT id FROM urls WHERE url = ?)
-	`, url).Scan(&menor)
+	err := db.QueryRow(context.Background(), `
+        SELECT MIN(preco)
+        FROM historico_precos
+        WHERE url_id = (SELECT id FROM urls WHERE url = $1)
+    `, url).Scan(&menor)
 
 	if err != nil || menor == 0 {
 		return 0, errors.New("nenhum preco encontrado")
@@ -53,10 +58,11 @@ func Media(url string) (float64, error) {
 	db := database.DB
 
 	var media float64
-	err := db.QueryRow(`SELECT AVG(preco)
-		FROM historico_precos
-		WHERE url_id = (SELECT id FROM urls WHERE url = ?)
-	`, url).Scan(&media)
+	err := db.QueryRow(context.Background(), `
+        SELECT AVG(preco)
+        FROM historico_precos
+        WHERE url_id = (SELECT id FROM urls WHERE url = $1)
+    `, url).Scan(&media)
 
 	if err != nil || media == 0 {
 		return 0, errors.New("nenhum preco encontrado")
@@ -69,11 +75,11 @@ func Media(url string) (float64, error) {
 func DesvioPadrao(url string) (float64, error) {
 	db := database.DB
 
-	rows, err := db.Query(`
-		SELECT preco
-		FROM historico_precos
-		WHERE url_id = (SELECT id FROM urls WHERE url = ?)
-	`, url)
+	rows, err := db.Query(context.Background(), `
+        SELECT preco
+        FROM historico_precos
+        WHERE url_id = (SELECT id FROM urls WHERE url = $1)
+    `, url)
 
 	if err != nil {
 		return 0, err
@@ -106,7 +112,6 @@ func DesvioPadrao(url string) (float64, error) {
 
 	variancia := somaQuadrados / (n - 1)
 	return math.Sqrt(variancia), nil
-
 }
 
 // DetectarNovaMinima verifica se o preco atual e menor que o menor preco registrado
@@ -138,5 +143,4 @@ func DetectarPromocao(url string, precoAtual float64, fatorDesvio float64) (bool
 
 	limite := media - (desvio * fatorDesvio)
 	return precoAtual < limite, nil
-
 }

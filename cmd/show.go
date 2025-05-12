@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"vigil/database"
+	"context"
 	"vigil/pkg/utils"
 
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ var showCmd = &cobra.Command{
 		}
 
 		if showID != 0 {
-			detalhes, err := database.ShowByID(showID)
+			detalhes, err := repoHistory.ShowByID(context.Background(), showID)
 			if err != nil {
 				cmd.PrintErrln("❌ Erro ao buscar informações do produto:", err)
 				return
@@ -30,7 +30,7 @@ var showCmd = &cobra.Command{
 			return
 		}
 
-		detalhes, err := database.ShowByUrl(url)
+		detalhes, err := repoHistory.ShowByUrl(context.Background(), url)
 		if err != nil {
 			cmd.PrintErrln("❌ Erro ao buscar informações do produto:", err)
 			return
