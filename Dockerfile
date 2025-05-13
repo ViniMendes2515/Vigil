@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN go build -o vigil
+RUN go build -o vigil -ldflags "-X vigil/cmd.Version=v1.0.0"
 
 FROM debian:bookworm-slim
 
