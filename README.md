@@ -100,7 +100,7 @@ Rode os testes unitários com:
 go test ./...
 ```
 
-📄 Licença
+📄 Licença <br>
 Este projeto está licenciado sob a Licença MIT.
 
 ✨ Autor
