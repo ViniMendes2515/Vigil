@@ -103,5 +103,5 @@ go test ./...
 📄 Licença <br>
 Este projeto está licenciado sob a Licença MIT.
 
-✨ Autor
+✨ Autor <br>
 Desenvolvido por Vinicius Mendes
