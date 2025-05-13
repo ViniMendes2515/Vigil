@@ -4,7 +4,7 @@
 
 ## 📋 Sobre
 
-O **Vigil** é um rastreador inteligente de preços desenvolvido em [Go](https://go.dev/), projetado para monitorar ofertas online e alertar automaticamente quando o **menor valor histórico** for atingido.
+O **Vigil** é uma CLI que possui comportamentos de um rastreador inteligente de preços desenvolvido em [Go](https://go.dev/), projetado para monitorar ofertas online e alertar automaticamente quando o **menor valor histórico** for atingido.
 
 Com suporte para **Amazon**, **Kabum** e **Mercado Livre**, o Vigil ajuda você a economizar, notificando diretamente no **Telegram** quando uma promoção real é detectada.
 
