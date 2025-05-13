@@ -61,6 +61,7 @@ func ScrapeKabum(url []string) ([]models.ProductInfo, error) {
 			Url:   e.Request.URL.String(),
 			Title: title,
 			Price: price,
+			Name:  title,
 		})
 
 		mu.Unlock()
@@ -68,6 +69,11 @@ func ScrapeKabum(url []string) ([]models.ProductInfo, error) {
 
 	// Encerra a goroutine
 	collector.OnScraped(func(r *colly.Response) {
+		wg.Done()
+	})
+
+	collector.OnError(func(r *colly.Response, err error) {
+		fmt.Printf("Error ao executar Collector Kabum: %v\n", err)
 		wg.Done()
 	})
 

@@ -26,7 +26,7 @@ var addCmd = &cobra.Command{
 	Long:  `Adiciona um produto para monitorar, informando a URL, o preco inicial e o preço limite se quiser.`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
 		if filePath != "" {

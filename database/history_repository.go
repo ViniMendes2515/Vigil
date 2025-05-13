@@ -49,7 +49,7 @@ func (r *PostgresPriceHistoryRepo) ListPrices(ctx context.Context) ([]string, er
 		for _, p := range precos {
 			precosFormat = append(precosFormat, fmt.Sprintf("R$ %.2f", p))
 		}
-		linha := fmt.Sprintf("- ID do produto: %d \n- URL: %s \n- Preços: %s", urlIDs[url], url, strings.Join(precosFormat, " | "))
+		linha := fmt.Sprintf("- ID do produto: %d \n- URL: %s \n- Preços: %s\n", urlIDs[url], url, strings.Join(precosFormat, " | "))
 		result = append(result, linha)
 	}
 

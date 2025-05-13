@@ -31,9 +31,36 @@ func ScrapeAmazon(url []string) ([]models.ProductInfo, error) {
 		RandomDelay: 1 * time.Second,
 	})
 
+	collector.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+		r.Headers.Set("Accept-Language", "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7")
+		r.Headers.Set("Cache-Control", "max-age=0")
+		r.Headers.Set("Sec-Ch-Ua", "\"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"")
+		r.Headers.Set("Sec-Ch-Ua-Mobile", "?0")
+		r.Headers.Set("Sec-Ch-Ua-Platform", "\"Windows\"")
+		r.Headers.Set("Sec-Fetch-Dest", "document")
+		r.Headers.Set("Sec-Fetch-Mode", "navigate")
+		r.Headers.Set("Sec-Fetch-Site", "none")
+		r.Headers.Set("Sec-Fetch-User", "?1")
+		r.Headers.Set("Upgrade-Insecure-Requests", "1")
+	})
+
 	collector.OnHTML("#corePriceDisplay_desktop_feature_div", func(e *colly.HTMLElement) {
 		inteiro := e.ChildText(".a-price-whole")
 		centavo := e.ChildText(".a-price-fraction")
+
+		if inteiro == "" && centavo == "" {
+			fmt.Printf("Não foi possível encontrar o preço para URL: %s\n", e.Request.URL.String())
+			return
+		}
+
+		if centavo == "" {
+			centavo = "00"
+		}
+
+		if inteiro == "" {
+			inteiro = "0"
+		}
 
 		inteiro = strings.ReplaceAll(inteiro, ".", "")
 		inteiro = strings.ReplaceAll(inteiro, ",", "")
@@ -53,7 +80,18 @@ func ScrapeAmazon(url []string) ([]models.ProductInfo, error) {
 
 	collector.OnHTML("span#productTitle", func(e *colly.HTMLElement) {
 		title := strings.TrimSpace(e.Text)
-		preco := e.Request.Ctx.GetAny("preco").(float64)
+
+		precoAny := e.Request.Ctx.GetAny("preco")
+		if precoAny == nil {
+			fmt.Printf("Preço não encontrado para o produto: %s\n", title)
+			return
+		}
+
+		preco, ok := precoAny.(float64)
+		if !ok {
+			fmt.Printf("Erro ao converter preço para o produto: %s\n", title)
+			return
+		}
 
 		mu.Lock()
 
@@ -71,7 +109,7 @@ func ScrapeAmazon(url []string) ([]models.ProductInfo, error) {
 	})
 
 	collector.OnError(func(r *colly.Response, err error) {
-		fmt.Printf("Error ao executar Collector: %v\n", err)
+		fmt.Printf("Error ao executar Collector Amazon: %v\n", err)
 		wg.Done()
 	})
 
