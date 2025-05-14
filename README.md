@@ -12,7 +12,7 @@ Com suporte para **Amazon**, **Kabum** e **Mercado Livre**, o Vigil ajuda você 
 
 - 🔍 Monitora produtos de múltiplas lojas (Amazon, Kabum, Mercado Livre)
 - 📊 Mantém histórico de preços e realiza análises
-- 📉 Detecta automaticamente menores preços históricos
+- 📉 Detecta automaticamente promoções
 - 📱 Envia alertas de promoções via [Telegram Bot API](https://core.telegram.org/bots/api)
 - 📄 Importação de produtos via CSV
 - 🛠️ Interface CLI completa e intuitiva
