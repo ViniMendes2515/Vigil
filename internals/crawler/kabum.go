@@ -24,6 +24,20 @@ func ScrapeKabum(url []string) ([]models.ProductInfo, error) {
 		colly.UserAgent("Mozilla/5.0 (compatible; KabumCrawler/1.0)"),
 	)
 
+	collector.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+		r.Headers.Set("Accept-Language", "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7")
+		r.Headers.Set("Cache-Control", "max-age=0")
+		r.Headers.Set("Sec-Ch-Ua", "\"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"")
+		r.Headers.Set("Sec-Ch-Ua-Mobile", "?0")
+		r.Headers.Set("Sec-Ch-Ua-Platform", "\"Windows\"")
+		r.Headers.Set("Sec-Fetch-Dest", "document")
+		r.Headers.Set("Sec-Fetch-Mode", "navigate")
+		r.Headers.Set("Sec-Fetch-Site", "none")
+		r.Headers.Set("Sec-Fetch-User", "?1")
+		r.Headers.Set("Upgrade-Insecure-Requests", "1")
+	})
+
 	// Limit requests
 	collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*kabum.*",
@@ -93,6 +107,20 @@ func FecthNameKabum(url string) (string, error) {
 		colly.AllowedDomains("kabum.com.br", "www.kabum.com.br"),
 		colly.UserAgent("Mozilla/5.0 (compatible; KabumCrawler/1.0)"),
 	)
+
+	collector.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+		r.Headers.Set("Accept-Language", "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7")
+		r.Headers.Set("Cache-Control", "max-age=0")
+		r.Headers.Set("Sec-Ch-Ua", "\"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"")
+		r.Headers.Set("Sec-Ch-Ua-Mobile", "?0")
+		r.Headers.Set("Sec-Ch-Ua-Platform", "\"Windows\"")
+		r.Headers.Set("Sec-Fetch-Dest", "document")
+		r.Headers.Set("Sec-Fetch-Mode", "navigate")
+		r.Headers.Set("Sec-Fetch-Site", "none")
+		r.Headers.Set("Sec-Fetch-User", "?1")
+		r.Headers.Set("Upgrade-Insecure-Requests", "1")
+	})
 
 	var name string
 
